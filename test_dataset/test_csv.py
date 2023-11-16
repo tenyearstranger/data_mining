@@ -15,7 +15,7 @@ if __name__ == "__main__":
     fileIn = open('../data/traj.csv', 'r')
     results = csv.reader(fileIn, delimiter=',')
 
-    with open('traj_lng_lat.csv', 'w') as file:
+    with open('traj_lng_lat.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         # 提取经度和纬度
         pattern = '\[([0-9]+.[0-9]+),([0-9]+.[0-9]+)\]'
