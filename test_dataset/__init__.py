@@ -4,46 +4,58 @@
 # @File : __init__.py.py
 # @Software : PyCharm
 
-import pymysql
 import re
-import datetime
 
-if __name__ == "__main__":
-    conn = pymysql.connect(
-        host='127.0.0.1',  # 主机名
-        port=3306,  # 端口号，MySQL默认为3306
-        user='root',  # 用户名
-        password='bh030618mfk',  # 密码
-        database='dm_hw',  # 数据库名称
-    )
+import numpy as np
+import pymysql
 
-    cursor = conn.cursor()
-    cursor.execute("select * from traj where holidays = 1;")
-    results = cursor.fetchall()
-    # print(len(results))
+conn = pymysql.connect(
+    host='127.0.0.1',  # 主机名
+    port=3306,  # 端口号，MySQL默认为3306
+    user='root',  # 用户名
+    password='bh030618mfk',  # 密码
+    database='dm_hw',  # 数据库名称
+)
+cursor = conn.cursor()
+searchTraj = 'select `entity_id`,`coordinates` from `traj` where `traj_id` = %s;'
 
-    # for result in results:
-    #     time = datetime.datetime.strptime(result[1], "%Y-%m-%dT%H:%M:%SZ");
-    #     print(time.year)
-    #     print(time.month)
-    #     print(time.day)
 
+def get_lng_lat(lng_lat_string):
     # 提取经度和纬度
     pattern = '\[([0-9]+.[0-9]+),([0-9]+.[0-9]+)\]'
-    updateSql = 'UPDATE `traj_lng_lat` SET `lng` = %s, `lat` = %s WHERE `id` = %s'
-    datas = []
+    tmp = re.match(pattern, lng_lat_string)
+    lng = float(tmp.group(1))
+    lat = float(tmp.group(2))
+    return lng, lat
+
+
+def getTraj(trajId):
+    lngs = []
+    lats = []
+    cursor.execute(searchTraj, trajId)
+    results = cursor.fetchall()
     for result in results:
-        tmp = re.match(pattern, result[4])
-        lng = tmp.group(1)
-        lat = tmp.group(2)
-        data = (lng, lat, result[0])
-        print(data)
-        datas.append(data)
-    print("data buildOver")
-    print(datas)
-    print("--------------------------------------------------")
-    cursor.execute(updateSql,datas[0])
-    conn.commit()
-    print(datas[0])
-    cursor.executemany(updateSql, datas)
-    conn.commit()
+        lng, lat = get_lng_lat(result[1])
+        lngs.append(lng)
+        lats.append(lat)
+    return lngs, lats
+
+
+if __name__ == "__main__":
+    # 找到traj_id的最大值和最小值
+    tmpSearch = 'select max(traj_id) from traj;'
+    cursor.execute(tmpSearch)
+    max_id = cursor.fetchone()
+    max_id = int(max_id[0])
+    tmpSearch = 'select min(traj_id) from traj'
+    cursor.execute(tmpSearch)
+    min_id = cursor.fetchone()
+    min_id = int(min_id[0])
+
+    for i in range(min_id, min_id + 5):
+        print("extend " + str(i) + "--------------")
+        datas = getTraj(i)
+        lngs, lats = getTraj(i)
+        lngPlot = (lngs[0] + lngs[1]) / 2
+        res = np.interp([lngPlot], lngs, lats)
+        print(res)
