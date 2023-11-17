@@ -3,7 +3,7 @@
 # @Author : mfk
 # @File : __init__.py.py
 # @Software : PyCharm
-
+import datetime
 import re
 
 import numpy as np
@@ -17,7 +17,7 @@ conn = pymysql.connect(
     database='dm_hw',  # 数据库名称
 )
 cursor = conn.cursor()
-searchTraj = 'select `entity_id`,`coordinates` from `traj` where `traj_id` = %s;'
+searchTraj = 'select `entity_id`,`time`,`coordinates` from `traj` where `traj_id` = %s;'
 
 
 def get_lng_lat(lng_lat_string):
@@ -30,15 +30,18 @@ def get_lng_lat(lng_lat_string):
 
 
 def getTraj(trajId):
+    times = []
     lngs = []
     lats = []
     cursor.execute(searchTraj, trajId)
     results = cursor.fetchall()
     for result in results:
-        lng, lat = get_lng_lat(result[1])
+        lng, lat = get_lng_lat(result[2])
         lngs.append(lng)
         lats.append(lat)
-    return lngs, lats
+        time = datetime.datetime.strptime(result[1], '%Y-%m-%dT%H:%M:%SZ')
+        times.append(time)
+    return times, lngs, lats
 
 
 if __name__ == "__main__":
@@ -52,10 +55,22 @@ if __name__ == "__main__":
     min_id = cursor.fetchone()
     min_id = int(min_id[0])
 
+    selectEntityId = 'select `entity_id` from `traj` where `traj_id` = %s'
     for i in range(min_id, min_id + 5):
+        cursor.execute(selectEntityId, i)
+        entity_id = cursor.fetchone()
         print("extend " + str(i) + "--------------")
-        datas = getTraj(i)
-        lngs, lats = getTraj(i)
-        lngPlot = (lngs[0] + lngs[1]) / 2
-        res = np.interp([lngPlot], lngs, lats)
-        print(res)
+        times, lngs, lats = getTraj(i)
+        # 将时间转化为浮点数
+        plots = []
+        timeFloats = []
+        for time in times:
+            timeFloats.append(time.timestamp())
+        for j in range(1, len(timeFloats)):
+            plot = (timeFloats[j-1] + timeFloats[j])/2
+            plots.append(plot)
+        # 进行插值
+        res1 = np.interp(plots, timeFloats, lngs)
+        res2 = np.interp(plots, timeFloats, lats)
+        print(res1)
+        print(res2)
