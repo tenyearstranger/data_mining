@@ -1,26 +1,20 @@
 # -*- coding = utf-8 -*-
-# @Time : 2023-11-14 16:03
+# @Time : 2023-11-21 16:33
 # @Author : mfk
-# @File : __init__.py.py
+# @File : extendTraj.py
 # @Software : PyCharm
 import csv
 import datetime
 import re
-
+import pandas as pd
 import numpy as np
-import pymysql
 
-conn = pymysql.connect(
-    host='127.0.0.1',  # 主机名
-    port=3306,  # 端口号，MySQL默认为3306
-    user='root',  # 用户名
-    password='bh030618mfk',  # 密码
-    database='dm_hw',  # 数据库名称
-)
-cursor = conn.cursor()
-searchTraj = 'select `entity_id`,`time`,`coordinates` from `traj` where `traj_id` = %s;'
 timeFormat = '%Y-%m-%dT%H:%M:%SZ'
+dataIns = pd.read_csv('../data/traj.csv')
+dataInCnt = 0
 
+
+#
 
 def get_lng_lat(lng_lat_string):
     # 提取经度和纬度
@@ -32,47 +26,41 @@ def get_lng_lat(lng_lat_string):
 
 
 def getTraj(trajId):
+    global dataInCnt
     times = []
     lngs = []
     lats = []
-    cursor.execute(searchTraj, trajId)
-    results = cursor.fetchall()
-    for result in results:
-        lng, lat = get_lng_lat(result[2])
+    dataIn = dataIns.iloc[dataInCnt]
+    while dataIn[3] == trajId:
+        lng, lat = get_lng_lat(dataIn[4])
         lngs.append(lng)
         lats.append(lat)
-        time = datetime.datetime.strptime(result[1], timeFormat)
+        time = datetime.datetime.strptime(dataIn[1], timeFormat)
         times.append(time)
+        dataInCnt += 1
+        dataIn = dataIns.iloc[dataInCnt]
     return times, lngs, lats
 
 
-if __name__ == "__main__":
-    # 找到traj_id的最大值和最小值
-    tmpSearch = 'select max(traj_id) from traj;'
-    cursor.execute(tmpSearch)
-    max_id = cursor.fetchone()
-    max_id = int(max_id[0])
-    tmpSearch = 'select min(traj_id) from traj'
-    cursor.execute(tmpSearch)
-    min_id = cursor.fetchone()
-    min_id = int(min_id[0])
+def extendTraj():
+    global dataInCnt
+    # 定义traj_id的最大值和最小值
+    min_id = 0
+    max_id = 770
 
-    selectEntityId = 'select `entity_id` from `traj` where `traj_id` = %s'
     datas = []  # 最终的数据容器
     for i in range(min_id, max_id):
-        cursor.execute(selectEntityId, i)
-        entity_id = cursor.fetchall()
-        if entity_id is None or len(entity_id) == 0:
+        print("%d--------------------"%i)
+        dataIn = dataIns.iloc[dataInCnt]
+        if dataIn[3] != i:
             continue
-        entity_id = entity_id[0]
-        print("extend " + str(i) + "--------------")
+        entity_id = dataIn[2]
         times, lngs, lats = getTraj(i)
         # 将时间转化为浮点数
         plots = []  # 插值点
         timeFloats = []
         for time in times:
             timeFloats.append(time.timestamp())
-        datas.append([entity_id, times[0], lngs[0], lats[0]])
         for j in range(1, len(timeFloats)):
             timeInterp = (timeFloats[j - 1] + timeFloats[j]) / 2
             plots.append(timeInterp)
@@ -87,8 +75,11 @@ if __name__ == "__main__":
             datas.append([entity_id, i, times[j].strftime(timeFormat), lngs[j], lats[j]])
         # for data in datas:
         #     print(data)
-
     # 写入csv
     with open('../extendedData/extendedTraj.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerows(datas)
+
+
+if __name__ == "__main__":
+    extendTraj()
