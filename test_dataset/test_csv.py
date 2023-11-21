@@ -12,10 +12,12 @@ import csv
 if __name__ == "__main__":
     results = []
 
-    fileIn = open('../data/traj.csv', 'r')
+    #fileIn = open('../data/traj.csv', 'r')
+    fileIn = open('../data/node.csv', 'r')
     results = csv.reader(fileIn, delimiter=',')
 
-    with open('traj_lng_lat.csv', 'w', newline='') as file:
+   #with open('traj_lng_lat.csv', 'w', newline='') as file:
+    with open('node_lng_lat.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         # 提取经度和纬度
         pattern = '\[([0-9]+.[0-9]+),([0-9]+.[0-9]+)\]'
