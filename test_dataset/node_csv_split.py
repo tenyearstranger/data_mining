@@ -10,18 +10,17 @@ def get_lng_lat(lng_lat_string):
     return lng, lat
 
 if __name__ == "__main__":
-    pattern = re.compile(u'\[(\[\d+\.\d+,\d+\.\d+\])(,\[\d+\.\d+,\d+\.\d+\])*\]')
+    pattern = re.compile(u'\[\d+\.\d+,\d+\.\d+\]')
     dataIns = pd.read_csv('../data/road.csv')
     dataOuts = []
     for dataIn in dataIns.iloc:
         s = str(dataIn[1])
         s = s.replace(" ","")
-        tmp = pattern.search(s)
-        groups = tmp.groups()
+        groups = pattern.findall(s)
         lngs = []
         lats = []
-        for i in range(0,len(groups)):
-            lng,lat = get_lng_lat(groups[i])
+        for group in groups :
+            lng,lat = get_lng_lat(group)
             lngs.append(lng)
             lats.append(lat)
         for i in range(1,len(lngs)):
