@@ -1,30 +1,33 @@
 import re
 import csv
+import pandas as pd
+def get_lng_lat(lng_lat_string):
+    # 提取经度和纬度
+    pattern = ',?\[(\d+\.\d+),(\d+\.\d+)\]'
+    tmp = re.match(pattern, lng_lat_string)
+    lng = float(tmp.group(1))
+    lat = float(tmp.group(2))
+    return lng, lat
 
-data_to_write = []
-with open('../data/node.csv', 'r') as csvfile:
-    reader = csv.reader(csvfile)
+if __name__ == "__main__":
+    pattern = re.compile(u'\[(\[\d+\.\d+,\d+\.\d+\])(,\[\d+\.\d+,\d+\.\d+\])*\]')
+    dataIns = pd.read_csv('../data/road.csv')
+    dataOuts = []
+    for dataIn in dataIns.iloc:
+        s = str(dataIn[1])
+        s = s.replace(" ","")
+        tmp = pattern.search(s)
+        groups = tmp.groups()
+        lngs = []
+        lats = []
+        for i in range(0,len(groups)):
+            lng,lat = get_lng_lat(groups[i])
+            lngs.append(lng)
+            lats.append(lat)
+        for i in range(1,len(lngs)):
+            dataOut = [lngs[i-1],lats[i-1],lngs[i],lats[i]]
+            dataOuts.append(dataOut)
 
-    with open('node_lng_lat.csv', 'w', newline='') as file:
+    with open('../extendedData/edge.csv', 'w', newline='') as file:
         writer = csv.writer(file)
-        datas = []
-        i = 0
-        for row in reader:
-            if i == 0:
-                i += 1
-                data = row
-                data.append("lng")
-                data.append("lat")
-                writer.writerow(row)
-                continue
-            coordinates = row[2].replace("[", "").replace("]", "").split(",")
-            longitude = float(coordinates[0])
-            latitude = float(coordinates[1])
-            print(f"经度: {longitude}, 纬度: {latitude}")
-            data = []
-            for result in row:
-                data.append(result)
-            data.append(longitude)
-            data.append(latitude)
-            writer.writerow(data)
-        print("data buildOver")
+        writer.writerows(dataOuts)

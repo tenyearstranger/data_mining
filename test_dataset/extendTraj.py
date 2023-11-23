@@ -18,7 +18,7 @@ dataInCnt = 0
 
 def get_lng_lat(lng_lat_string):
     # 提取经度和纬度
-    pattern = '\[([0-9]+.[0-9]+),([0-9]+.[0-9]+)\]'
+    pattern = '\[(\d+\.\d+),(\d+\.\d+)\]'
     tmp = re.match(pattern, lng_lat_string)
     lng = float(tmp.group(1))
     lat = float(tmp.group(2))
