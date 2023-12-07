@@ -76,38 +76,140 @@ def myScore(estimator, X):  # 轮廓系数
     return score
 
 
-def roadCluster(trajectory):  # 使用DBSCAN聚类算法进行路段划分
+def roadCluster(trajectory, eps, min_samples):  # 使用DBSCAN聚类算法进行路段划分
     sample_num = int(0.6 * len(trajectory))
-    # print(sample_num)  # 0.6*4232=2539
-    trajectory_sample = trajectory.sample(sample_num)  # 随机抽样60%样本点
+    # print(sample_num)  # 0.6*num
+    # trajectory_sample = trajectory.sample(sample_num)  # 随机抽样60%样本点
     # print(trajectory_sample)
-    locations = np.array(trajectory_sample[['lat', 'lng']])  # 位置数据
+    location = np.array(trajectory[['lat', 'lng']])  # 位置数据
     # print(locations)
-    param_grid = {"eps": [ 0.0001, 0.001, 0.01, 0.03, 0.04, 0.045, 0.05, 0.055, 0.06, 0.07, 0.08, 0.1, 0.2, 0.5],
-                  "min_samples": [15, 30, 50, 100, 120, 140, 160, 180, 200, 220, 240, 260, 500, 1000]
-                  }  # epsilon控制聚类的距离阈值，min_samples控制形成簇的最小样本数
-    # dbscan = DBSCAN(eps=0.0005, min_samples=15)
-    dbscan = DBSCAN()
-    grid_search = GridSearchCV(estimator=dbscan, param_grid=param_grid, scoring=myScore)
-    grid_search.fit(locations)
-    # dbscan.fit(locations)
-    print("best parameters:{}".format(grid_search.best_params_))
-    print("label:{}".format(grid_search.best_estimator_.labels_))
-    labels = grid_search.best_estimator_.labels_  # -1表示离群点
-    # labels = dbscan.labels_
+    # param_grid = {"eps": [ 0.0001, 0.001, 0.01, 0.03, 0.04, 0.045, 0.05, 0.055, 0.06, 0.07, 0.08, 0.1, 0.2, 0.5],
+    #               "min_samples": [15, 30, 50, 100, 120, 140, 160, 180, 200, 220, 240, 260, 500, 1000]
+    #               }  # epsilon控制聚类的距离阈值，min_samples控制形成簇的最小样本数
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+    # dbscan = DBSCAN()
+    # grid_search = GridSearchCV(estimator=dbscan, param_grid=param_grid, scoring=myScore)
+    # grid_search.fit(locations)
+    dbscan.fit(location)
+    # print("best parameters:{}".format(grid_search.best_params_))
+    # print("label:{}".format(grid_search.best_estimator_.labels_))
+    # labels = grid_search.best_estimator_.labels_  # -1表示离群点
+    labels = dbscan.labels_
     print(labels)  # 如果你在运行DBSCAN后得到的所有标签都是-1，那就意味着你的数据集中不存在可以被聚类到其他簇的点，所有点都被视为噪声点。
     score = silhouette_score(locations, labels, metric='euclidean')  # 轮廓系数
     total_cluster = labels.max() - labels.min() + 1
     print("一共聚了{}类, 轮廓系数为{}".format(total_cluster, score))
-    road_label = pd.DataFrame({"road_label": labels})
-    trajectory_sample.reset_index(drop=True, inplace=True)
-    road_label.reset_index(drop=True, inplace=True)
-    cluster_data = pd.concat([trajectory_sample, road_label], axis=1, ignore_index=True)  # 带标签的行驶记录
-    cluster_data.columns = ['lng', 'lat', 'speed', 'road_label']
-    cluster_data['road_label'] = [str(i) for i in cluster_data['road_label']]
-    print(cluster_data)
-    return cluster_data
+    # road_label = pd.DataFrame({"road_label": labels})
+    # trajectory.reset_index(drop=True, inplace=True)
+    # road_label.reset_index(drop=True, inplace=True)
+    # cluster_data = pd.concat([trajectory, road_label], axis=1, ignore_index=True)  # 带标签的行驶记录
+    # cluster_data.columns = ['lng', 'lat', 'speed', 'road_label']
+    # cluster_data['road_label'] = [str(i) for i in cluster_data['road_label']]
+    # print(cluster_data)
+    # return cluster_data
 
+def evaluate_parameters(locations, eps, min_samples):
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+    labels = dbscan.fit_predict(locations)
+    silhouette = silhouette_score(locations, labels)
+    return silhouette
+
+def find_best_parameters(locations):
+    eps_range = np.arange(0.001, 0.1, 0.001)
+    min_samples_range = range(2, 21)
+
+    best_silhouette = -1
+    best_eps = None
+    best_min_samples = None
+
+    for eps in eps_range:
+        for min_samples in min_samples_range:
+            silhouette = evaluate_parameters(locations, eps, min_samples)
+            if silhouette > best_silhouette:
+                best_silhouette = silhouette
+                best_eps = eps
+                best_min_samples = min_samples
+
+    return best_eps, best_min_samples
+
+def find_best_parameters_wang(locations):
+    lat_min, lat_max = 39.8000129, 39.9999811  # 纬度范围
+    lng_min, lng_max = 116.2500662, 116.4999762  # 经度范围
+    grid_size = 0.005  # 网格大小，根据实际情况调整
+    min_samples_grid = [5, 10, 15, 20]  # 最小数据点数量的候选值
+
+    min_samples_best = None
+    eps_best = None
+    silhouette_best = -1
+
+    for min_samples in min_samples_grid:
+        # 统计每个网格中的数据点数量
+        grid_counts = {}
+        for point in locations:
+            grid_lat = int((point[0] - lat_min) // grid_size)
+            grid_lng = int((point[1] - lng_min) // grid_size)
+            grid_key = (grid_lat, grid_lng)
+            if grid_key not in grid_counts:
+                grid_counts[grid_key] = 0
+            grid_counts[grid_key] += 1
+
+        # 选择eps为一个网格的对角线长度
+        eps = grid_size * np.sqrt(2)
+        while True:
+            # 使用当前的eps和min_samples进行DBSCAN聚类
+            dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+            labels = dbscan.fit_predict(locations)
+
+            # 检查是否形成多个簇
+            n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+            if n_clusters > 1:
+                # 计算轮廓系数评估聚类效果
+                silhouette = silhouette_score(locations, labels)
+
+                # 更新最佳参数和最佳轮廓系数
+                if silhouette > silhouette_best:
+                    silhouette_best = silhouette
+                    min_samples_best = min_samples
+                    eps_best = eps
+
+            # 减小eps的值，直到找到满足最小数据点数量的最佳eps
+            if min_samples <= min(grid_counts.values()) or eps < 0.001:  # 设置eps的最小值阈值
+                break
+            eps -= 0.001
+
+    return eps_best, min_samples_best
+
+def evaluate_parameters(locations, eps, min_samples):
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+    labels = dbscan.fit_predict(locations)
+    unique_labels = np.unique(labels)
+    if len(unique_labels) < 2:
+        return -1  # 如果聚类结果只有一个标签，返回-1表示无效的结果
+    silhouette = silhouette_score(locations, labels)
+    return silhouette
+
+def find_best_parameters(locations):
+    lat_min, lat_max = 39.8000129, 39.9999811  # 纬度范围
+    lng_min, lng_max = 116.2500662, 116.4999762  # 经度范围
+
+    eps_range = np.linspace(0.001, 0.1, num=100)  # eps 参数范围
+    min_samples_range = range(22, 100)  # min_samples 参数范围
+
+    best_silhouette = -1
+    best_eps = None
+    best_min_samples = None
+
+    for eps in eps_range:
+        for min_samples in min_samples_range:
+            silhouette = evaluate_parameters(locations, eps, min_samples)
+            if silhouette != -1 :
+                print("当前有效eps是:"+eps+" 当前有效min_samples是:"+min_samples+" 当前有效silhouette是:"+silhouette)
+            if silhouette > best_silhouette:
+                best_silhouette = silhouette
+                best_eps = eps
+                best_min_samples = min_samples
+
+    return best_eps, best_min_samples
 
 if __name__ == "__main__":
     """
@@ -138,13 +240,19 @@ if __name__ == "__main__":
     total_missing_values = missing_values.sum()
     print(total_missing_values)  # 输出缺失值
     """
-    road_data_cluster, road_example = trajectoryCluster(road_data, 4232)  # k = num / 4, 进行k-means聚类
-    # roadCluster(road_example)  # 进行DBSCAN聚类
-    # roadCluster(road_data)
-
-    # traj_data_cluster, traj_example = trajectoryCluster(traj_date, 10000)  # k = 414844 / 4
-    # roadCluster(traj_example)  # 进行DBSCAN聚类
-
+    # road_data_cluster, road_example = trajectoryCluster(road_data, 4232)  # k = num / 4, 进行k-means聚类
     # 网格法：将数据空间划分为一定大小的网格，例如10x10的网格。
     # 然后统计每个网格中的数据点数量，选择eps为一个网格的边长，min_samples为一个网格中的最小数据点数量。
     # 这种方法可以确保算法在具有相似密度的区域进行聚类
+    # 利用网格法计算最佳eps和min_sample
+    # 采用网格法的计算结果0.006071067811865476 10
+    # 采用轮廓系数法的计算结果2-21(0.008,8),22-100(0.010000000000000002,22)
+    locations = road_data[['lat', 'lng']].values  # 提取经纬度
+    # eps_best, min_samples_best = find_best_parameters(locations)
+    # print(eps_best, min_samples_best)
+    roadCluster(road_data, 0.008, 8)  # 进行DBSCAN聚类
+
+    # traj_data_cluster, traj_example = trajectoryCluster(traj_date, 4000)  # k = 414844 / 4
+    # roadCluster(traj_example)  # 进行DBSCAN聚类
+
+
