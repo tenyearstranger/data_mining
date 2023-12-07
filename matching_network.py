@@ -45,6 +45,7 @@ for index, row in df.iterrows():
     # 从GPS数据中获取经度和纬度
     point = (row['latitude'], row['longitude'])
     print(point)
+    print(index)
     # 找到路网中最近的节点
     nearest_node = find_nearest_node(G, point)
     matched_nodes.append(nearest_node)
