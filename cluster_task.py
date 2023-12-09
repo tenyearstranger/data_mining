@@ -9,9 +9,6 @@ from sklearn.metrics import silhouette_score
 from sklearn.model_selection import GridSearchCV
 import matplotlib.pyplot as plt
 
-
-# —————— 算法参考：基于DBSCAN算法的营运车辆超速点聚类分析（计算机工程） —————— # https://max.book118.com/html/2018/0407/160435287.shtm
-
 def trajectoryCluster(trajectory, k):  # 使用KMeans， DBSCAN聚类算法进行路段划分
     ####先kmeans首次聚类，为每一个轨迹点分配一个类
     locations = np.array(trajectory[['lat', 'lng']])  # 位置数据
@@ -264,7 +261,7 @@ if __name__ == "__main__":
     """
     # k-means聚类
     locations = road_data[['lng', 'lat']]
-    kMeanCluster(locations, 500)  # k = num / 4 = 4232, 进行k-means聚类
+    kMeanCluster(locations, 4232)  # k = num / 4 = 4232,500,20,2 进行k-means聚类
     # DBSCAN聚类
     # 网格法：将数据空间划分为一定大小的网格，例如10x10的网格。
     # 然后统计每个网格中的数据点数量，选择eps为一个网格的边长，min_samples为一个网格中的最小数据点数量。
