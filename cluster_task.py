@@ -261,7 +261,7 @@ if __name__ == "__main__":
     """
     # k-means聚类
     locations = road_data[['lng', 'lat']]
-    kMeanCluster(locations, 4232)  # k = num / 4 = 4232,500,20,2 进行k-means聚类
+    kMeanCluster(locations, 500)  # k = num / 4 = 4232,500,20,2 进行k-means聚类
     # DBSCAN聚类
     # 网格法：将数据空间划分为一定大小的网格，例如10x10的网格。
     # 然后统计每个网格中的数据点数量，选择eps为一个网格的边长，min_samples为一个网格中的最小数据点数量。
