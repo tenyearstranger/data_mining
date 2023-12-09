@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.model_selection import GridSearchCV
+import matplotlib.pyplot as plt
 
 
 # —————— 算法参考：基于DBSCAN算法的营运车辆超速点聚类分析（计算机工程） —————— # https://max.book118.com/html/2018/0407/160435287.shtm
@@ -33,6 +34,27 @@ def trajectoryCluster(trajectory, k):  # 使用KMeans， DBSCAN聚类算法进�
     print("轨迹点代表\n", rep_trajectory)
     return cluster_data, rep_trajectory
 
+def kMeanCluster(features, k_num):
+    # 设置K-means参数
+    k = k_num  # 较大的聚类数量，可以根据实际情况进行调整
+    init_method = 'k-means++'  # 使用K-means++算法选择初始点
+    max_iter = 300  # 较多的迭代次数，可以根据实际情况进行调整
+
+    # 使用K-means算法进行聚类
+    kmeans = KMeans(n_clusters=k, init=init_method, max_iter=max_iter, random_state=42)
+    kmeans.fit(features)
+
+    # 获取聚类结果
+    labels = kmeans.labels_
+    score = silhouette_score(features, labels, metric='euclidean')  # 轮廓系数
+    print("一共聚了{}类, 轮廓系数为{}".format(labels.max() - labels.min() + 1, score))
+
+    # 可视化聚类结果
+    plt.scatter(features['lng'], features['lat'], c=labels)
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.title('K-means Clustering')
+    plt.show()
 
 def calDistance(point1, point2):  # 计算两点之间的曼哈顿距离
     manhattan_distance = np.abs(point1[0] - point2[0]) + np.abs(point1[1] - point2[1])
@@ -240,17 +262,20 @@ if __name__ == "__main__":
     total_missing_values = missing_values.sum()
     print(total_missing_values)  # 输出缺失值
     """
-    # road_data_cluster, road_example = trajectoryCluster(road_data, 4232)  # k = num / 4, 进行k-means聚类
+    # k-means聚类
+    locations = road_data[['lng', 'lat']]
+    kMeanCluster(locations, 500)  # k = num / 4 = 4232, 进行k-means聚类
+    # DBSCAN聚类
     # 网格法：将数据空间划分为一定大小的网格，例如10x10的网格。
     # 然后统计每个网格中的数据点数量，选择eps为一个网格的边长，min_samples为一个网格中的最小数据点数量。
     # 这种方法可以确保算法在具有相似密度的区域进行聚类
     # 利用网格法计算最佳eps和min_sample
     # 采用网格法的计算结果0.006071067811865476 10
     # 采用轮廓系数法的计算结果2-21(0.008,8),22-100(0.010000000000000002,22)
-    locations = road_data[['lat', 'lng']].values  # 提取经纬度
+    # locations = road_data[['lat', 'lng']].values  # 提取经纬度
     # eps_best, min_samples_best = find_best_parameters(locations)
     # print(eps_best, min_samples_best)
-    roadCluster(road_data, 0.008, 8)  # 进行DBSCAN聚类
+    # roadCluster(road_data, 0.008, 8)  # 进行DBSCAN聚类
 
     # traj_data_cluster, traj_example = trajectoryCluster(traj_date, 4000)  # k = 414844 / 4
     # roadCluster(traj_example)  # 进行DBSCAN聚类
