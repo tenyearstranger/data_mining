@@ -60,7 +60,7 @@ data['distance_accumulated'] = data['current_dis'].cumsum()
 data = data.dropna()
 
 # 选择特征，并去除'coordinates'
-features = ['hour', 'day_of_week', 'speed_change_rate', 'distance_accumulated']
+features = ['hour', 'day_of_week', 'speeds', 'distance_accumulated']
 X = data[features]
 
 # 假设'coordinates'列是形如[x, y]的列表
