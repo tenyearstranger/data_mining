@@ -1,16 +1,8 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
-import torch
-from torch.utils.data import Dataset, DataLoader
-import torch.nn as nn
-import torch.optim as optim
-from sklearn.preprocessing import LabelEncoder
-import ast
+
 
 # 读取数据
-data = pd.read_csv("extendedData/traj_lng_lat.csv")
+data = pd.read_csv("data/jump_task.csv")
 
 # 时间特征工程
 data['time'] = pd.to_datetime(data['time'])
@@ -24,6 +16,25 @@ data['date'] = data['time'].dt.date
 # data['speed_change_rate'] = data.groupby('traj_id')['speeds'].pct_change()
 # data['distance_accumulated'] = data.groupby('traj_id')['current_dis'].cumsum()
 
+# 初始化两个新列来存储经度和纬度
+data['lng'] = pd.Series(dtype='float')
+data['lat'] = pd.Series(dtype='float')
+
+# 遍历数据集，解析经度和纬度
+for index, row in data.iterrows():
+    # 确保coordinates是字符串类型
+    coordinates_str = str(row['coordinates'])
+    # 进行字符串操作
+    if '[' in coordinates_str and ']' in coordinates_str:
+        coordinates_list = coordinates_str.strip('[]').split(',')
+        lng = float(coordinates_list[0])
+        lat = float(coordinates_list[1])
+
+        # 将解析出的经度和纬度存入新列
+        data.at[index, 'lng'] = lng
+        data.at[index, 'lat'] = lat
+
+
 #下一跳和下一时间答案
 for traj_id in data['traj_id'].unique():
     # 获取当前轨迹的索引
@@ -36,9 +47,9 @@ for traj_id in data['traj_id'].unique():
     data.loc[traj_indices[:-1], 'next_second'] = data.loc[traj_indices[1:], 'second'].values
 
 # 处理缺失值(每个traj_id的最后一行）
-data = data.dropna()
+# data = data.dropna()
 
 # 保存新生成的数据到CSV文件
-data.to_csv("extendedData/traj_feature.csv", index=False)
+data.to_csv("extendedData/jump_feature.csv", index=False)
 
 print(data[100:150])
