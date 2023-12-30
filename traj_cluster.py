@@ -43,6 +43,12 @@ kmeans.fit(reduced_features)
 # 获取聚类结果
 cluster_labels = kmeans.labels_
 
+# 计算轮廓系数
+silhouette_avg = silhouette_score(reduced_features, cluster_labels)
+
+# 打印轮廓系数
+print("轮廓系数: {:.2f}".format(silhouette_avg))
+
 # 可视化聚类结果
 plt.scatter(reduced_features[:, 0], reduced_features[:, 1], c=cluster_labels, cmap='viridis')
 plt.xlabel('Component 1')

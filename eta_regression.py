@@ -1,43 +1,102 @@
+import warnings
 import pandas as pd
 import numpy as np
-import pathlib
-from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from datetime import datetime, timedelta
 
-# 步骤 1: 设计算法
-# 首先，我们需要设计一个算法来估计车辆的行驶时间。在这个算法中，我们可以考虑以下因素与行驶时间之间的关系：
-# 轨迹密度与通行速度：根据车辆的轨迹密度（即一定时间段内经过的位置密集程度），可以推测出交通拥堵程度。通常情况下，轨迹密度越高，车辆行驶速度越慢。
-# 时间戳信息：考虑到交通状况可能会随着时间的变化而变化，我们可以利用时间戳信息来捕捉这种变化。例如，高峰时段通常会导致交通拥堵，从而增加行驶时间。
-# 节假日信息：节假日可能会对交通状况产生影响。在设计算法时，我们可以将节假日作为一个特征，以捕捉与行驶时间之间的关联。
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# 步骤 2：实现算法
+# 导入数据集
+data = pd.read_csv('extendedData/traj_feature.csv')
 
-# 读取并加载训练数据集 traj_lng_lat.csv 和任务数据集 eta_task.csv
-cwd = pathlib.Path.cwd()
-train_data = pd.read_csv(cwd / 'extendedData' / 'traj_lng_lat.csv', index_col=0)
-task_data = pd.read_csv(cwd / 'data' / 'eta_task.csv', index_col=0)
+# 特征列和目标列
+features = ['time_interval', 'current_dis', 'day_of_week', 'speeds', 'lat', 'lng', 'holidays', 'next_lat', 'next_lng']
+X = data[features]
 
-# 数据预处理
-# 处理时间戳格式
-# 将时间字符串转换为 pandas 的时间戳格式
-train_data['time'] = pd.to_datetime(train_data['time'])
-task_data['time'] = pd.to_datetime(task_data['time'])
-print(train_data['time'])
-# 提取时间戳中的日期、小时和分钟信息作为特征
-train_data['date'] = pd.to_datetime(train_data['time']).dt.date
-train_data['hour'] = pd.to_datetime(train_data['time']).dt.hour
-train_data['minute'] = pd.to_datetime(train_data['time']).dt.minute
-train_data['second'] = pd.to_datetime(train_data['time']).dt.second
-task_data['date'] = pd.to_datetime(task_data['time']).dt.date
-task_data['hour'] = pd.to_datetime(task_data['time']).dt.hour
-task_data['minute'] = pd.to_datetime(task_data['time']).dt.minute
-task_data['second'] = pd.to_datetime(task_data['time']).dt.second
-# print(train_data['date'])
-# print(train_data['hour'])
-# print(train_data['minute'])
-# print(train_data['second'])
+# 目标列
+y = data['next_time_interval']
 
-# 处理训练集缺失值，无缺失值不处理
-# 提取特征
-train_features = train_data[['traj_id', 'current_dis', 'speeds', 'holidays']]
-task_features = task_data[['traj_id', 'current_dis', 'speeds', 'holidays']]
+# 划分数据集为训练集和测试集
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+# 创建梯度提升回归模型
+best_regressor = GradientBoostingRegressor(random_state=42)
+
+# 设置超参数网格
+# param_grid = {
+#     'n_estimators': [100, 200, 300],
+#     'max_depth': [3, 5, 10],
+#     'min_samples_split': [2, 5, 10]
+# }
+
+# 使用网格搜索进行超参数调优
+# grid_search = GridSearchCV(best_regressor, param_grid, cv=3)
+# grid_search.fit(X_train, y_train)
+
+# 获取最佳模型
+# best_regressor = grid_search.best_estimator_
+
+# 模型训练
+best_regressor.fit(X_train, y_train)
+# 进行预测
+predictions = best_regressor.predict(X_test)
+
+# 计算MSE和R²
+mse = mean_squared_error(y_test, predictions)
+r2 = r2_score(y_test, predictions)
+
+# 计算RMSE
+rmse = np.sqrt(mse)
+
+print("均方误差 (MSE):", mse)
+print("均方根误差 (RMSE):", rmse)
+print("决定系数 (R²):", r2)
+
+
+# 加载eta_test.csv文件
+eta_test_data = pd.read_csv('extendedData/eta_feature.csv')
+
+# 特征列
+features = ['time_interval', 'current_dis', 'day_of_week', 'speeds', 'lat', 'lng', 'holidays', 'next_lat', 'next_lng']
+
+# 存储预测的next_time_interval和转换后的时间
+predictions = []
+converted_times = []
+
+# 遍历数据集的每两行信息为一个单位
+for i in range(0, len(eta_test_data), 2):
+    # 提取当前行和下一行的信息
+    current_info = eta_test_data.iloc[i]
+    next_info = eta_test_data.iloc[i + 1]
+
+    # 提取特征
+    X = current_info[features]
+
+    # 使用训练好的模型进行预测
+    prediction = best_regressor.predict([X])[0]
+
+    # 存储预测结果
+    predictions.append(prediction)
+
+    # 提取当前行的日期
+    date = pd.to_datetime(current_info['date']).date()
+    time_interval = current_info['time_interval']
+    prediction = abs(prediction - time_interval) + time_interval
+
+    # 将预测的时间转换为datetime对象
+    predicted_time = timedelta(seconds=prediction)
+
+    # 构造完整的日期和时间
+    converted_time = (datetime.combine(date, datetime.min.time()) + predicted_time).strftime("%Y-%m-%d %H:%M:%S+00:00")  # 转换为UTC+8时区的时间
+    # print(converted_time)
+
+    # 将转换后的时间添加到列表中
+    converted_times.append(converted_time)
+
+# 将转换后的时间填入第二行的"time"中
+eta_test_data.iloc[1::2, eta_test_data.columns.get_loc('time')] = converted_times
+
+# 保存修改后的数据集到文件中
+eta_test_data.to_csv('eta_prediction.csv', index=False)
