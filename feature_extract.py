@@ -34,9 +34,6 @@ for index, row in data.iterrows():
         data.at[index, 'lng'] = lng
         data.at[index, 'lat'] = lat
 
-
-print(1111)
-
 #下一跳和下一时间答案
 for traj_id in data['traj_id'].unique():
     # 获取当前轨迹的索引
