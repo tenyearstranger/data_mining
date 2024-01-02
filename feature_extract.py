@@ -34,7 +34,6 @@ for index, row in data.iterrows():
         data.at[index, 'lng'] = lng
         data.at[index, 'lat'] = lat
 
-
 #下一跳和下一时间答案
 for traj_id in data['traj_id'].unique():
     # 获取当前轨迹的索引
@@ -42,14 +41,14 @@ for traj_id in data['traj_id'].unique():
     # 将下一个坐标的值赋给'next_location_label'，除了轨迹的最后一个点
     data.loc[traj_indices[:-1], 'next_lat'] = data.loc[traj_indices[1:], 'lat'].values
     data.loc[traj_indices[:-1], 'next_lng'] = data.loc[traj_indices[1:], 'lng'].values
-    # data.loc[traj_indices[:-1], 'next_hour'] = data.loc[traj_indices[1:], 'hour'].values
-    # data.loc[traj_indices[:-1], 'next_minute'] = data.loc[traj_indices[1:], 'minute'].values
-    # data.loc[traj_indices[:-1], 'next_second'] = data.loc[traj_indices[1:], 'second'].values
+    data.loc[traj_indices[:-1], 'next_hour'] = data.loc[traj_indices[1:], 'hour'].values
+    data.loc[traj_indices[:-1], 'next_minute'] = data.loc[traj_indices[1:], 'minute'].values
+    data.loc[traj_indices[:-1], 'next_second'] = data.loc[traj_indices[1:], 'second'].values
     # eta特征工程
     # data.loc[traj_indices[:-1], 'next_time_interval'] = data.loc[traj_indices[1:], 'time_interval'].values
 
 # 处理缺失值(每个traj_id的最后一行）
-# data = data.dropna()
+data = data.dropna()
 
 # 保存新生成的数据到CSV文件
 data.to_csv("extendedData/eta_feature.csv", index=False)

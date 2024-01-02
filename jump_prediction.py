@@ -5,6 +5,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 import numpy as np
 import warnings
+from dateutil import parser
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -36,8 +37,13 @@ def haversine(lat1, lon1, lat2, lon2):
 # 假设您的数据集是一个名为 'data.csv' 的文件
 data = pd.read_csv('extendedData/traj_feature.csv')
 
+# 解析时间列并计算相对于基准日期的秒数
+base_date = pd.to_datetime("2013-01-01").tz_localize(None)
+data['time'] = data['time'].apply(lambda x: (parser.parse(x).replace(tzinfo=None) - base_date).total_seconds())
+
 # 您的特征列和目标列
-features = ['hour', 'minute', 'second', 'current_dis', 'day_of_week', 'speeds', 'lat', 'lng', 'holidays']
+# features = ['hour', 'minute', 'second', 'current_dis', 'day_of_week', 'speeds', 'lat', 'lng', 'holidays']
+features = ['time', 'current_dis', 'day_of_week', 'speeds', 'lat', 'lng', 'holidays']
 X = data[features]
 
 # 目标列
@@ -71,6 +77,8 @@ print("决定系数 (R²):", r2)
 
 # 加载jump_test.csv文件
 jump_test_data = pd.read_csv('extendedData/jump_feature.csv')
+
+jump_test_data['time'] = jump_test_data['time'].apply(lambda x: (parser.parse(x).replace(tzinfo=None) - base_date).total_seconds())
 
 # 按traj_id分组处理
 grouped = jump_test_data.groupby('traj_id')
